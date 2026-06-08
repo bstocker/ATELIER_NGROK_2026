@@ -66,7 +66,7 @@ jobs:
             - name: Install and configure Ngrok
               run: |
                   curl -s https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz | tar xz -C /tmp
-                  /tmp/ngrok config add-authtoken "${{ secrets.NGROK_SECRET_KEY }}"
+                  /tmp/ngrok config add-authtoken "${{ secrets.NGROK_AUTHTOKEN }}"
 
             - name: Create Ngrok tunnel
               run: |
