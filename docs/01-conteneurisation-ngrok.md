@@ -47,11 +47,11 @@ C'est exactement ce que permet la combinaison **Docker + GitHub Actions + Ngrok*
 
 Un évaluateur doit pouvoir, **en lisant les logs de votre workflow** :
 
-- [ ] Voir une **URL publique** au format `https://*.ngrok-free.app/` (ou équivalent).
-- [ ] Cliquer dessus pendant les ~120 s d'ouverture et obtenir la page d'accueil Flask (« Bonjour tout le monde ! »).
-- [ ] Naviguer vers `/exercices/` et voir **votre prénom + nom**.
-- [ ] Constater que le job s'est **terminé proprement** (pas en `timeout` après 6 h, pas resté bloqué).
-- [ ] Vérifier que **votre token Ngrok n'apparaît nulle part en clair** dans les logs.
+- [x] Voir une **URL publique** au format `https://*.ngrok-free.app/` (ou équivalent).
+- [x] Cliquer dessus pendant les ~120 s d'ouverture et obtenir la page d'accueil Flask (« Bonjour tout le monde ! »).
+- [x] Naviguer vers `/exercices/` et voir **votre prénom + nom**.
+- [x] Constater que le job s'est **terminé proprement** (pas en `timeout` après 6 h, pas resté bloqué).
+- [x] Vérifier que **votre token Ngrok n'apparaît nulle part en clair** dans les logs.
 
 ---
 
