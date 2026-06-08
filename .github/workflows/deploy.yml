@@ -1,4 +1,4 @@
-name: "Exercice 2 — Qualité du code et tests automatisés
+name: Exercice 2 — Qualité du code et tests automatisés
 
 on:
   push:
