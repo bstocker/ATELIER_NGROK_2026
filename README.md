@@ -90,9 +90,16 @@ Un mini-serveur Flask de quelques lignes :
    python --version
    git --version
    ```
-4. Lisez ce README en entier, puis l'énoncé de l'**Exercice 1**.
-5. Travaillez **chaque exercice sur une branche dédiée** (`exo-1-docker`, `exo-2-tests`, …) et ouvrez une **Pull Request** vers `main`.
-6. Cochez les critères de validation au fur et à mesure dans la description de la PR.
+4. Pour lancer les tests dans le Codespace :
+   ```bash
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt -r requirements-dev.txt
+   pytest
+   ruff check .
+   ```
+5. Lisez ce README en entier, puis l'énoncé de l'**Exercice 1**.
+6. Travaillez **chaque exercice sur une branche dédiée** (`exo-1-docker`, `exo-2-tests`, …) et ouvrez une **Pull Request** vers `main`.
+7. Cochez les critères de validation au fur et à mesure dans la description de la PR.
 
 ---
 
