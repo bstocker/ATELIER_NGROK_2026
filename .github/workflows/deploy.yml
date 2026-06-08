@@ -66,26 +66,34 @@ jobs:
       - name: Install and configure Ngrok
         run: |
           curl -s https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz | tar xz -C /tmp
-          /tmp/ngrok config add-authtoken "${{ secrets.NGROK_AUTHTOKEN }}"
+          # On force l'écriture dans un fichier de config local bien défini
+          /tmp/ngrok config add-authtoken "${{ secrets.NGROK_AUTHTOKEN }}" --config /tmp/ngrok.yml
 
       - name: Create Ngrok tunnel and Verify deployment
         run: |
-          # 1. Lancement de Ngrok en arrière-plan
-          /tmp/ngrok http 5000 > /tmp/ngrok.log 2>&1 &
-          sleep 5
+          echo "Démarrage de Ngrok..."
+          # On spécifie le fichier de config et on désactive les updates automatiques
+          /tmp/ngrok http 5000 --config /tmp/ngrok.yml --log=stdout > /tmp/ngrok.log 2>&1 &
 
-          # 2. Récupération de l'URL
+          # On laisse un peu plus de temps à Ngrok pour initialiser la connexion TLS
+          sleep 7
+                
+          # Affichage des logs Ngrok pour le debug en direct dans la console GitHub
+          echo "=== LOGS NGROK ==="
+          cat /tmp/ngrok.log
+          echo "=================="
+                
+          # Récupération de l'URL
           NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
-          echo "Ngrok URL: ${NGROK_URL}"
-
+          echo "Ngrok URL générée: ${NGROK_URL}"
+                
           if [ "$NGROK_URL" = "null" ] || [ -z "$NGROK_URL" ]; then
-            echo "Erreur : Impossible de générer l'URL Ngrok. Logs :"
-            cat /tmp/ngrok.log
-            exit 1
+          echo "Erreur critique : L'URL Ngrok n'a pas pu être récupérée."
+          exit 1
           fi
 
-          # 3. Vérification (le tunnel est toujours actif car on est dans le même step)
-          echo "Testing Flask app..."
-          curl -v "${NGROK_URL}/" || echo "Service not immediately available"
+          # Vérification des endpoints
+          echo "Testing Flask app via Ngrok..."
+          curl -v "${NGROK_URL}/" || echo "Le point d'entrée principal n'est pas disponible"
           sleep 2
-          curl -v "${NGROK_URL}/exercices/" || echo "Exercices endpoint not available"
+          curl -v "${NGROK_URL}/exercices/" || echo "L'endpoint /exercices/ n'est pas disponible"
