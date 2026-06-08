@@ -1,15 +1,32 @@
-name: "Exercice 1 — Conteneuriser Flask et exposer via Ngrok"
+name: "Exercice 2 — Qualité du code et tests automatisés
 
 on:
   push:
-    branches: [main, exo-1-docker]
+    branches: [main, exo-1-docker, exo-2-tests]
 
 permissions:
   contents: read
   packages: write
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run tests
+        run: |
+          python3 -m pytest -q
+
   build-deploy-expose:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
