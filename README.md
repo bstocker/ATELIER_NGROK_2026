@@ -90,9 +90,16 @@ Un mini-serveur Flask de quelques lignes :
    python --version
    git --version
    ```
-4. Lisez ce README en entier, puis l'énoncé de l'**Exercice 1**.
-5. Travaillez **chaque exercice sur une branche dédiée** (`exo-1-docker`, `exo-2-tests`, …) et ouvrez une **Pull Request** vers `main`.
-6. Cochez les critères de validation au fur et à mesure dans la description de la PR.
+4. Pour lancer les tests dans le Codespace :
+   ```bash
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt -r requirements-dev.txt
+   pytest
+   ruff check .
+   ```
+5. Lisez ce README en entier, puis l'énoncé de l'**Exercice 1**.
+6. Travaillez **chaque exercice sur une branche dédiée** (`exo-1-docker`, `exo-2-tests`, …) et ouvrez une **Pull Request** vers `main`.
+7. Cochez les critères de validation au fur et à mesure dans la description de la PR.
 
 ---
 
@@ -143,6 +150,18 @@ Pas de copier-coller, allez à la source :
 - **Flask** — `flask.palletsprojects.com` (sections : *Testing*, *Deploying*)
 - **Trivy** (scan d'image) — `aquasecurity.github.io/trivy`
 - **GHCR** — `docs.github.com` → *Working with the Container registry*
+
+## Image GHCR
+
+L'image publiée par le pipeline est disponible sur GHCR : `ghcr.io/nicolasbellina/atelier_devops_2026`.
+
+Pour la récupérer :
+
+```bash
+docker pull ghcr.io/nicolasbellina/atelier_devops_2026:latest
+```
+
+Les autres tags utiles sont `sha-<short>` pour un commit précis et `pr-<num>` pour une pull request. Vérifiez aussi que le package est visible publiquement dans l'onglet *Packages* du dépôt.
 
 ---
 
