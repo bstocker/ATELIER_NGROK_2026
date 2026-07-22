@@ -46,7 +46,7 @@ Dans cet exercice, vous allez ajouter un **étage de validation** en amont du d�
 
 ## Critères de validation
 
-- [ ] Le dépôt contient un dossier de tests (`tests/`) avec au moins 2 fichiers de tests pertinents.
+- [X] Le dépôt contient un dossier de tests (`tests/`) avec au moins 2 fichiers de tests pertinents.
 - [ ] Il existe un fichier de configuration de linter (`pyproject.toml`, `.flake8`, `.ruff.toml`, etc.).
 - [ ] Sur la page **Actions** du repo, il y a un job `quality` (ou nommé similairement) qui s'exécute **avant** le job de déploiement Ngrok.
 - [ ] **Test de provocation 1** : ajoutez volontairement un commit qui contient une faute de lint évidente (variable inutilisée, import inutile, etc.). Le pipeline doit virer **au rouge**. Le job Ngrok doit afficher `skipped`.
