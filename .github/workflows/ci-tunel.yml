@@ -1,0 +1,156 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main", "EX4" ]
+  pull_request:
+    branches: [ "main", "EX4" ]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ==========================================
+  # JOB 1 : QUALITÉ & SECRETS
+  # ==========================================
+
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Secret Scanning (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Ruff Linter
+        run: ruff check .
+
+      - name: Run Pytest
+        run: pytest test_app.py
+
+  # ==========================================
+  # JOB 2 : SÉCURITÉ
+  # ==========================================
+  security:
+    needs: quality 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build local Docker Image for scanning
+        run: docker build -t flask-app:local .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'flask-app:local'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+
+  # ==========================================
+  # JOB 3 : BUILD & PUSH VERS GHCR
+  # ==========================================
+  build-push:
+    needs: security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+            type=ref,event=pr
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ==========================================
+  # JOB 4 : DÉPLOIEMENT NGROK (Pull from GHCR)
+  # ==========================================
+  deploy-tunnel:
+    needs: build-push 
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Pull and Run Docker Container from GHCR
+        run: |
+          # GHCR exige des noms en minuscules. On convertit le nom du dépôt au cas où.
+          IMAGE_NAME=$(echo "ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          # On extrait les 7 premiers caractères du SHA du commit actuel
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          
+          echo "Téléchargement de l'image : $IMAGE_NAME:sha-$SHORT_SHA"
+          docker pull $IMAGE_NAME:sha-$SHORT_SHA
+          docker run -d -p 5000:5000 --name my-running-app $IMAGE_NAME:sha-$SHORT_SHA
+
+      - name: Install Ngrok
+        run: |
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com/ buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+          sudo apt-get update && sudo apt-get install ngrok
+
+      - name: Open Ngrok Tunnel and Expose App
+        env:
+          NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
+        run: |
+          ngrok config add-authtoken $NGROK_AUTHTOKEN
+          ngrok http 5000 > /dev/null &
+          sleep 5 
+          PUBLIC_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+          
+          echo "=========================================================="
+          echo " L'APPLICATION FLASK EST ACCESSIBLE PUBLIQUEMENT ICI :"
+          echo " $PUBLIC_URL"
+          echo "=========================================================="
+          
+          sleep 120
+
+      - name: Clean up resources
+        if: always()
+        run: |
+          docker stop my-running-app || true
+          pkill ngrok || true
