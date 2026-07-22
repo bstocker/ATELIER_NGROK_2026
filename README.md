@@ -96,6 +96,26 @@ Un mini-serveur Flask de quelques lignes :
 
 ---
 
+## Tests locaux dans un Codespace
+
+Pour valider le projet dans un Codespace fraîchement ouvert :
+
+```bash
+python -m pip install -r requirements-dev.txt
+ruff check .
+python -m pytest -q
+```
+
+Ces commandes permettent de reproduire exactement les vérifications exécutées par la CI.
+
+## Sécurité et image Docker
+
+L’exercice 3 met en place les bonnes pratiques suivantes :
+
+- l’image Docker tourne avec un utilisateur non-root ;
+- le secret Ngrok est transmis via une variable d’environnement GitHub Actions ;
+- un scan Trivy bloque le pipeline sur les vulnérabilités critiques.
+
 ## Règles de l'atelier
 
 - **Pas de copier-coller sans avoir lu et compris.** L'évaluateur posera des questions sur votre pipeline. « Je ne sais pas pourquoi ça marche » coûte cher.
