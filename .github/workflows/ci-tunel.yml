@@ -4,13 +4,21 @@ on: [push]
 
 jobs:
   # ==========================================
-  # JOB 1 : QUALITÉ (Lint & Tests)
+  # JOB 1 : QUALITÉ & SECRETS
   # ==========================================
   quality:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Scan des secrets en clair dans le code
+      - name: Secret Scanning (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -23,11 +31,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install Flask pytest ruff
-
       - name: Run Ruff Linter
         run: ruff check .
 
@@ -35,10 +38,32 @@ jobs:
         run: pytest test_app.py
 
   # ==========================================
-  # JOB 2 : DÉPLOIEMENT NGROK (Dépend de 'quality')
+  # JOB 2 : SÉCURITÉ DE L'IMAGE (Dépend de quality)
+  # ==========================================
+  security:
+    needs: quality 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build local Docker Image for scanning
+        run: docker build -t flask-app:local .
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'flask-app:local'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+
+  # ==========================================
+  # JOB 3 : DÉPLOIEMENT NGROK (Dépend de security)
   # ==========================================
   deploy-tunnel:
-    needs: quality
+    needs: security 
     runs-on: ubuntu-latest
 
     steps:
@@ -50,6 +75,11 @@ jobs:
 
       - name: Run Docker Container
         run: docker run -d -p 5000:5000 --name my-running-app flask-app
+
+      - name: Test de provocation (Secret Masking)
+        env:
+          NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
+        run: echo "Mon token Ngrok est $NGROK_AUTHTOKEN"
 
       - name: Install Ngrok
         run: |
@@ -71,13 +101,10 @@ jobs:
           echo " $PUBLIC_URL"
           echo "=========================================================="
           
-          echo "Le tunnel reste actif pendant 120 secondes..."
           sleep 120
-          echo "Temps écoulé. Début de la fermeture propre."
 
       - name: Clean up resources
         if: always()
         run: |
-          echo "Arrêt du conteneur Docker et fermeture de Ngrok..."
           docker stop my-running-app || true
           pkill ngrok || true
