@@ -14,6 +14,7 @@ jobs:
   # ==========================================
   # JOB 1 : QUALITÉ & SECRETS
   # ==========================================
+  
   quality:
     runs-on: ubuntu-latest
     steps:
