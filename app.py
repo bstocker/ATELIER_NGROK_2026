@@ -1,10 +1,8 @@
 from flask import Flask
 from flask import render_template
-from flask import json
-import sqlite3
                                                                                                                                        
-app = Flask(__name__)                                                                                                                  
-                                                                                                                                       
+app = Flask(__name__)
+                                                                                                                  
 @app.route('/')
 def hello_world():
     return (
