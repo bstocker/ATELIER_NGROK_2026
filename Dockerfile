@@ -1,7 +1,7 @@
 # JUSTIFICATION DU CHOIX : Utilisation de la version 'slim' (basée sur Debian).
 # Elle est beaucoup plus légère que l'image standard et évite les problèmes de 
 # compilation liés à 'musl' que l'on rencontre souvent avec Alpine en Python.
-FROM python:3.11.0-slim
+FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=app.py
