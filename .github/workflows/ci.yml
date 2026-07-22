@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: ["exo-2-ci", "main", "develop"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run Ruff linter
+        run: ruff check .
+
+      - name: Run Pytest
+        run: pytest -v
+
+  deploy:
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t atelier-devops-app:latest .
+
+      - name: Run Flask container in background
+        run: |
+          docker run -d \
+            --name flask-app \
+            -p 5000:5000 \
+            atelier-devops-app:latest
+
+      - name: Wait for Flask to be ready
+        run: |
+          echo "Waiting for Flask to start..."
+          sleep 3
+          for i in {1..30}; do
+            if curl -f http://localhost:5000/ > /dev/null 2>&1; then
+              echo "✓ Flask is ready!"
+              exit 0
+            fi
+            echo "  Attempt $i/30... waiting..."
+            sleep 2
+          done
+          echo "✗ Flask failed to start"
+          docker logs flask-app
+          exit 1
+
+      - name: Install Ngrok
+        run: |
+          curl -sSL https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz | tar xz
+          sudo mv ngrok /usr/local/bin/
+
+      - name: Start Ngrok tunnel
+        run: |
+          export NGROK_AUTHTOKEN="${{ secrets.NGROK_AUTHTOKEN }}"
+          ngrok http 5000 > ngrok.log 2>&1 &
+          NGROK_PID=$!
+          
+          echo "Ngrok tunnel started (PID: $NGROK_PID)"
+          sleep 5
+          
+          # Extract URL from ngrok API
+          PUBLIC_URL=""
+          for i in {1..10}; do
+            PUBLIC_URL=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null | grep -oP '"public_url":"\K[^"]+' | grep -i ngrok | head -1)
+            if [ -n "$PUBLIC_URL" ]; then
+              break
+            fi
+            echo "  Attempt $i/10 to get URL from ngrok..."
+            sleep 1
+          done
+          
+          if [ -n "$PUBLIC_URL" ]; then
+            echo "=========================================="
+            echo "✓ PUBLIC URL: $PUBLIC_URL"
+            echo "=========================================="
+            echo "App is accessible at: $PUBLIC_URL"
+            echo "Exercices page: $PUBLIC_URL/exercices/"
+            echo ""
+            echo "Tunnel will remain open for ~120 seconds..."
+            echo "=========================================="
+          else
+            echo "⚠ Could not extract URL from ngrok"
+            echo "Debug: ngrok.log content:"
+            cat ngrok.log
+            echo ""
+            echo "Debug: ngrok API response:"
+            curl -s http://localhost:4040/api/tunnels || echo "API not available"
+          fi
+          
+          # Keep the tunnel open for 120 seconds
+          sleep 120
+          
+          # Kill ngrok gracefully
+          kill $NGROK_PID || true
+          sleep 2
+
+      - name: Stop Flask container
+        if: always()
+        run: |
+          docker stop flask-app || true
+          docker rm flask-app || true
+
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "✓ Deployment cycle complete"
+          docker images -a
